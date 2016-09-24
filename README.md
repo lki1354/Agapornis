@@ -8,6 +8,7 @@ Mini Quadrocopter
 * DRV8833 ()
 * DC Motor XXX ( )
 * LiPo Akku XXXmAH
+
 ### v0.1 
 * [WiPy 1.0](https://www.pycom.io/solutions/py-boards/wipy/) (pycom)
     * [pinout](http://docs.micropython.org/en/v1.8.3/wipy/wipy/quickref.html)
@@ -22,4 +23,8 @@ On the WiPy board runs a [MicroPython](http://docs.micropython.org/en/v1.8.3/wip
 
 ## Prototype
 
+##Types
 
+ * Agapornis (Unzertrennlichen)
+  * A. personatus (Schwarzköpfchen)
+  * A. nigrigenis (Russköpfchen)
