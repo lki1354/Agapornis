@@ -4,14 +4,26 @@
 
 from array import array
 
+GyroScaleValues = [250, 500, 1000, 2000]
 
-class MPU9250(object):
+
+class MPUException(OSError):
+    """
+    Error exception for the MPU classes
+    """
+    pass
+
+
+class MPU9250Int(object):
     """
     InvenSense Sensor MPU9250
     """
     __address = None
     __address_magnetometer = 12  # mag AK8963
     __interface = None
+    __gyro_scale = None
+    __accelerometer_scale = None
+    __magnetometer_scale = None
 
     def __init__(self, interface, ad0=0):
         """
@@ -30,9 +42,9 @@ class MPU9250(object):
         self.accelerometer_full_scale = 2  # g
         # set gyro and accelerometer into full bandwidth and no filtering
         reg_val = self._read_byte(0x1B)
-        self._write(0x1B, reg_val | 0x03)
+        self._write(0x1B, reg_val | 0x03)   # set .... todo insert comment for the register 0x1B initialization
         reg_val = self._read_byte(0x1D)
-        self._write(0x1D, reg_val | 0x08)
+        self._write(0x1D, reg_val | 0x08)   # set .... todo insert comment for the register 0x1D initialization
 
     def _write(self, memory_address, buffer):
         """
@@ -105,7 +117,7 @@ class MPU9250(object):
         max_range = self._read_byte(0x1B) & 0x18
         max_range *= 500  # *500 and /8 is *62.5
         max_range //= 8
-        return int(max_range)
+        return max_range
 
     @gyro_full_scale.setter
     def gyro_full_scale(self, max_range):
@@ -114,11 +126,14 @@ class MPU9250(object):
         :param max_range: the max value of the gyro sensor (degree/second) allowed [250, 500, 1000, 2000]
         :return: nothing
         """
+        if max_range not in GyroScaleValues:
+            raise ValueError("max_range value has to be a value of 'GyroScaleValues' = [250, 500, 1000, 2000] ")
+        self.__gyro_scale = max_range
         # /500 and *8 is *0.016
         max_range //= 500    # for select right bit
         max_range *= 8      # for shift to right position
         max_range |= (self._read_byte(0x1B) & 0xE7)
-        self._write(0x1B, int(max_range))
+        self._write(0x1B, max_range)
 
     @property
     def accelerometer_full_scale(self):
@@ -129,19 +144,23 @@ class MPU9250(object):
         max_range = self._read_byte(0x1C) & 0x18
         max_range *= 4
         max_range //= 8
-        return int(max_range)
+        return max_range
 
     @accelerometer_full_scale.setter
     def accelerometer_full_scale(self, max_range):
         """
 
-        :param max_range: the max value of the gyro sensor (degree/second) allowed [250, 500, 1000, 2000]
+        :param max_range: the max value of the accelerometer sensor (g) allowed [2, 4, 8, 16]
         :return: nothing
         """
+        if max_range not in GyroScaleValues:
+            raise ValueError("max_range value has to be a value of 'GyroScaleValues' = [250, 500, 1000, 2000] ")
+        self.__gyro_scale = max_range
+        # /500 and *8 is *0.016
         max_range //= 4    # for select right bit
         max_range *= 8    # for shift to right position
         max_range |= (self._read_byte(0x1C) & 0xE7)
-        self._write(0x1C, int(max_range))
+        self._write(0x1C, max_range)
 
     def how_am_i(self):
         """
@@ -169,7 +188,7 @@ class MPU9250(object):
         return data
 
     @property
-    def data(self):
+    def data_int(self):
         """
 
         :return: a array with calculated data
@@ -177,14 +196,14 @@ class MPU9250(object):
         raw_data = self._raw_data
         data = array('l')
 
-        data.append(1)
-        data.append(1)
-        data.append(1)
+        data.append(((raw_data[0] << 8) | raw_data[1])*1000 // self.__accelerometer_scale)   # x axes acc [mg]
+        data.append(((raw_data[2] << 8) | raw_data[3])*1000 // self.__accelerometer_scale)   # y axes acc [mg]
+        data.append(((raw_data[4] << 8) | raw_data[5])*1000 // self.__accelerometer_scale)   # y axes acc [mg]
 
         data.append(((raw_data[6] << 8) | raw_data[7]) // 3 + 2100)  # 100 deg
 
-        data.append(1)
-        data.append(1)
-        data.append(1)
+        data.append(((raw_data[8] << 8) | raw_data[9])*1000 // self.__gyro_scale)   # x axes gyro [mdeg/s]
+        data.append(((raw_data[10] << 8) | raw_data[11])*1000 // self.__gyro_scale)   # x axes gyro [mdeg/s]
+        data.append(((raw_data[12] << 8) | raw_data[13])*1000 // self.__gyro_scale)   # x axes gyro [mdeg/s]
 
         return data
