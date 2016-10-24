@@ -46,6 +46,21 @@ class MPU9250Int(object):
         reg_val = self._read_byte(0x1D)
         self._write(0x1D, reg_val | 0x08)   # set .... todo insert comment for the register 0x1D initialization
 
+    def _change_interface(self, interface):
+        """
+
+        :param interface: needs a class object which provides 3 functions
+            * writeto_mem(...)
+            * readfrom_mem_into(...)
+            * readfrom_mem(...)
+        :return: old interface
+        """
+        old_interface = self.__interface
+        if interface is None:
+            raise Exception("The interface may not be None!")
+        self.__interface = interface
+        return old_interface
+
     def _write(self, memory_address, buffer):
         """
 
@@ -191,19 +206,47 @@ class MPU9250Int(object):
     def data_int(self):
         """
 
-        :return: a array with calculated data
+        :return: a array with calculated data long (int)
         """
         raw_data = self._raw_data
         data = array('l')
 
         data.append(((raw_data[0] << 8) | raw_data[1])*1000 // self.__accelerometer_scale)   # x axes acc [mg]
         data.append(((raw_data[2] << 8) | raw_data[3])*1000 // self.__accelerometer_scale)   # y axes acc [mg]
-        data.append(((raw_data[4] << 8) | raw_data[5])*1000 // self.__accelerometer_scale)   # y axes acc [mg]
+        data.append(((raw_data[4] << 8) | raw_data[5])*1000 // self.__accelerometer_scale)   # z axes acc [mg]
 
         data.append(((raw_data[6] << 8) | raw_data[7]) // 3 + 2100)  # 100 deg
 
         data.append(((raw_data[8] << 8) | raw_data[9])*1000 // self.__gyro_scale)   # x axes gyro [mdeg/s]
-        data.append(((raw_data[10] << 8) | raw_data[11])*1000 // self.__gyro_scale)   # x axes gyro [mdeg/s]
-        data.append(((raw_data[12] << 8) | raw_data[13])*1000 // self.__gyro_scale)   # x axes gyro [mdeg/s]
+        data.append(((raw_data[10] << 8) | raw_data[11])*1000 // self.__gyro_scale)   # y axes gyro [mdeg/s]
+        data.append(((raw_data[12] << 8) | raw_data[13])*1000 // self.__gyro_scale)   # z axes gyro [mdeg/s]
+
+        return data
+
+
+class MPU9250Float(MPU9250Int):
+    """
+
+    """
+    def __init__(self, interface, ad0=0):
+        super().__init__(interface=interface, ad0=ad0)
+
+    def data_float(self):
+        """
+
+        :return: a array with calculated data in float
+        """
+        raw_data = self._raw_data
+        data = array('f')
+
+        data.append(((raw_data[0] << 8) | raw_data[1]) / self.__accelerometer_scale)   # x axes acc [g]
+        data.append(((raw_data[2] << 8) | raw_data[3]) / self.__accelerometer_scale)   # y axes acc [g]
+        data.append(((raw_data[4] << 8) | raw_data[5]) / self.__accelerometer_scale)   # z axes acc [g]
+
+        data.append(((raw_data[6] << 8) | raw_data[7]) / 333.87 + 21)  # 100 deg
+
+        data.append(((raw_data[8] << 8) | raw_data[9]) / self.__gyro_scale)     # x axes gyro [deg/s]
+        data.append(((raw_data[10] << 8) | raw_data[11]) / self.__gyro_scale)   # y axes gyro [deg/s]
+        data.append(((raw_data[12] << 8) | raw_data[13]) / self.__gyro_scale)   # z axes gyro [deg/s]
 
         return data
