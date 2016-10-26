@@ -16,6 +16,7 @@ Mini Quadrocopter
 * [motor driver DRV8835](https://www.pololu.com/product/2135) (pololu)
 * [DC Motor 7x16](http://www.exp-tech.de/crazyflie-2-spare-7x16-mm-coreless-dc-motor-with-connector?___SID=U) (exp-tech)
 * [LiPo Akku 240mAh](http://www.exp-tech.de/crazyflie-2-0-spare-battery-including-charger) 
+   * [SparkFun LiPo Fuel Gauge](https://www.sparkfun.com/products/10617)
    * or an other
     
 ## Software
