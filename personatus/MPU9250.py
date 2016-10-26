@@ -5,6 +5,21 @@
 from array import array
 
 GyroScaleValues = [250, 500, 1000, 2000]
+AccelerometerScaleValues = [2, 4, 8, 16]
+
+
+def bytes_to_int(msb, lsb):
+    """
+    Convert two bytes to signed integer (big endian)
+    for little endian reverse msb, lsb arguments
+    Can be used in an interrupt handler
+    :param msb:
+    :param lsb:
+    :return:
+    """
+    if not msb & 0x80:
+        return msb << 8 | lsb  # +ve
+    return - (((msb ^ 255) << 8) | (lsb ^ 255) + 1)
 
 
 class MPUException(OSError):
@@ -21,9 +36,9 @@ class MPU9250Int(object):
     __address = None
     __address_magnetometer = 12  # mag AK8963
     __interface = None
-    __gyro_scale = None
-    __accelerometer_scale = None
-    __magnetometer_scale = None
+    __gyro_sensitivity = None
+    __accelerometer_sensitivity = None
+    __magnetometer_sensitivity = None
 
     def __init__(self, interface, ad0=0):
         """
@@ -143,7 +158,7 @@ class MPU9250Int(object):
         """
         if max_range not in GyroScaleValues:
             raise ValueError("max_range value has to be a value of 'GyroScaleValues' = [250, 500, 1000, 2000] ")
-        self.__gyro_scale = max_range
+        self.__gyro_sensitivity = 2**16 // (2*max_range)
         # /500 and *8 is *0.016
         max_range //= 500    # for select right bit
         max_range *= 8      # for shift to right position
@@ -168,9 +183,9 @@ class MPU9250Int(object):
         :param max_range: the max value of the accelerometer sensor (g) allowed [2, 4, 8, 16]
         :return: nothing
         """
-        if max_range not in GyroScaleValues:
+        if max_range not in AccelerometerScaleValues:
             raise ValueError("max_range value has to be a value of 'GyroScaleValues' = [250, 500, 1000, 2000] ")
-        self.__gyro_scale = max_range
+        self.__accelerometer_sensitivity = 2**16 // (2*max_range)
         # /500 and *8 is *0.016
         max_range //= 4    # for select right bit
         max_range *= 8    # for shift to right position
@@ -211,42 +226,14 @@ class MPU9250Int(object):
         raw_data = self._raw_data
         data = array('l')
 
-        data.append(((raw_data[0] << 8) | raw_data[1])*1000 // self.__accelerometer_scale)   # x axes acc [mg]
-        data.append(((raw_data[2] << 8) | raw_data[3])*1000 // self.__accelerometer_scale)   # y axes acc [mg]
-        data.append(((raw_data[4] << 8) | raw_data[5])*1000 // self.__accelerometer_scale)   # z axes acc [mg]
+        data.append(bytes_to_int(raw_data[0], raw_data[1])*1000 // self.__accelerometer_sensitivity)   # x axes acc [mg]
+        data.append(bytes_to_int(raw_data[2], raw_data[3])*1000 // self.__accelerometer_sensitivity)   # y axes acc [mg]
+        data.append(bytes_to_int(raw_data[4], raw_data[5])*1000 // self.__accelerometer_sensitivity)   # z axes acc [mg]
 
-        data.append(((raw_data[6] << 8) | raw_data[7]) // 3 + 2100)  # 100 deg
+        data.append(bytes_to_int(raw_data[6], raw_data[7]) // 3 + 2100)  # 100 deg
 
-        data.append(((raw_data[8] << 8) | raw_data[9])*1000 // self.__gyro_scale)   # x axes gyro [mdeg/s]
-        data.append(((raw_data[10] << 8) | raw_data[11])*1000 // self.__gyro_scale)   # y axes gyro [mdeg/s]
-        data.append(((raw_data[12] << 8) | raw_data[13])*1000 // self.__gyro_scale)   # z axes gyro [mdeg/s]
-
-        return data
-
-
-class MPU9250Float(MPU9250Int):
-    """
-
-    """
-    def __init__(self, interface, ad0=0):
-        super().__init__(interface=interface, ad0=ad0)
-
-    def data_float(self):
-        """
-
-        :return: a array with calculated data in float
-        """
-        raw_data = self._raw_data
-        data = array('f')
-
-        data.append(((raw_data[0] << 8) | raw_data[1]) / self.__accelerometer_scale)   # x axes acc [g]
-        data.append(((raw_data[2] << 8) | raw_data[3]) / self.__accelerometer_scale)   # y axes acc [g]
-        data.append(((raw_data[4] << 8) | raw_data[5]) / self.__accelerometer_scale)   # z axes acc [g]
-
-        data.append(((raw_data[6] << 8) | raw_data[7]) / 333.87 + 21)  # 100 deg
-
-        data.append(((raw_data[8] << 8) | raw_data[9]) / self.__gyro_scale)     # x axes gyro [deg/s]
-        data.append(((raw_data[10] << 8) | raw_data[11]) / self.__gyro_scale)   # y axes gyro [deg/s]
-        data.append(((raw_data[12] << 8) | raw_data[13]) / self.__gyro_scale)   # z axes gyro [deg/s]
+        data.append(bytes_to_int(raw_data[8], raw_data[9])*1000 // self.__gyro_sensitivity)   # x axes gyro [mdeg/s]
+        data.append(bytes_to_int(raw_data[10], raw_data[11])*1000 // self.__gyro_sensitivity)   # y axes gyro [mdeg/s]
+        data.append(bytes_to_int(raw_data[12], raw_data[13])*1000 // self.__gyro_sensitivity)   # z axes gyro [mdeg/s]
 
         return data
